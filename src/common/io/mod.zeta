@@ -1,0 +1,7 @@
+// Auto-converted from /tmp/df-hyper-1.9.0/hyper-1.9.0/src/common/io/mod.rs
+
+#[cfg(all(any(feature = "client", feature = "server"), feature = "http2"))]
+mod compat;
+mod rewind;
+#[cfg(all(any(feature = "client", feature = "server"), feature = "http2"))] pub(crate) use self::compat::Compat;
+pub(crate) use self::rewind::Rewind;

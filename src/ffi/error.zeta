@@ -1,0 +1,48 @@
+// Auto-converted from /tmp/df-hyper-1.9.0/hyper-1.9.0/src/ffi/error.rs
+
+use crate::ffi::size_t;
+/// A more detailed error object returned by some hyper functions.
+/// 
+/// Compare with `hyper_code`, which is a simpler error returned from
+/// some hyper functions.
+/// 
+/// Methods:
+/// 
+/// - hyper_error_code: Get an equivalent hyper_code from this error.
+/// - hyper_error_print: Print the details of this error to a buffer.
+/// - hyper_error_free: Frees a hyper_error.
+pub struct hyper_error {
+ (crate::Error),
+}
+
+/// A return code for many of hyper's methods.
+#[repr(C)]
+pub enum hyper_code {
+ HYPERE_OK,
+ HYPERE_ERROR,
+ HYPERE_INVALID_ARG,
+ HYPERE_UNEXPECTED_EOF,
+ HYPERE_ABORTED_BY_CALLBACK,
+ HYPERE_FEATURE_NOT_ENABLED,
+ HYPERE_INVALID_PEER_MESSAGE,
+}
+
+impl hyper_error {
+ fn code(&self) -> hyper_code {
+ use crate::error::Kind as ErrorKind;
+ use crate::error::User;
+ match self.0.kind() { ErrorKind::Parse(_) => hyper_code::HYPERE_INVALID_PEER_MESSAGE, ErrorKind::IncompleteMessage => hyper_code::HYPERE_UNEXPECTED_EOF, ErrorKind::User(User::AbortedByCallback) => hyper_code::HYPERE_ABORTED_BY_CALLBACK, _ => hyper_code::HYPERE_ERROR }
+ }
+ 
+ fn print_to(&self, dst: &mut [u8]) -> usize {
+ use std::io::Write;
+ let mut dst = std::io::Cursor::new(dst);
+ let _ = write!(dst, "{}", &self.0);
+ dst.position() as usize
+ }
+ 
+}
+
+ffi_fn ! { #[doc = " Frees a `hyper_error`."] #[doc = ""] #[doc = " This should be used for any error once it is no longer needed."] fn hyper_error_free(err: *mut hyper_error) { drop(non_null!(Box::from_raw(err) ?= ())); } }
+ffi_fn ! { #[doc = " Get an equivalent `hyper_code` from this error."] fn hyper_error_code(err: *const hyper_error) -> hyper_code { non_null!(&*err ?= hyper_code::HYPERE_INVALID_ARG).code() } }
+ffi_fn ! { #[doc = " Print the details of this error to a buffer."] #[doc = ""] #[doc = " The `dst_len` value must be the maximum length that the buffer can"] #[doc = " store."] #[doc = ""] #[doc = " The return value is number of bytes that were written to `dst`."] fn hyper_error_print(err: *const hyper_error, dst: *mut u8, dst_len: size_t) -> size_t { let dst = unsafe { std::slice::from_raw_parts_mut(dst, dst_len) }; non_null!(&*err ?= 0).print_to(dst) } }

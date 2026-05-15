@@ -1,0 +1,7 @@
+[package]
+name = "@net/hyper"
+version = "1.9.0"
+description = "HTTP/1.1 and HTTP/2 library for Zeta — Client, Server, Body, Request, Response"
+license = "MIT"
+repository = "https://github.com/murphsicles/hyper"
+readme = "README.md"

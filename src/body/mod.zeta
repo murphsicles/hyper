@@ -1,0 +1,23 @@
+// Auto-converted from /tmp/df-hyper-1.9.0/hyper-1.9.0/src/body/mod.rs
+
+pub use bytes::{ Buf, Bytes };
+pub use http_body::Body;
+pub use http_body::Frame;
+pub use http_body::SizeHint;
+pub use self::incoming::Incoming;
+#[cfg(all(any(feature = "client", feature = "server"), feature = "http1"))] pub(crate) use self::incoming::Sender;
+#[cfg(all(any(feature = "http1", feature = "http2"), any(feature = "client", feature = "server")))] pub(crate) use self::length::DecodedLength;
+mod incoming;
+#[cfg(all(any(feature = "http1", feature = "http2"), any(feature = "client", feature = "server")))]
+mod length;
+fn _assert_send_sync() {
+ fn _assert_send<T: Send>() {
+ }
+ 
+ fn _assert_sync<T: Sync>() {
+ }
+ 
+ _assert_send::<Incoming>();
+ _assert_sync::<Incoming>()
+}
+

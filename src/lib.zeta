@@ -1,0 +1,25 @@
+// Auto-converted from /tmp/df-hyper-1.9.0/hyper-1.9.0/src/lib.rs
+
+#[doc(hidden)] pub use http;
+// [unsupported item]
+#[doc(no_inline)] pub use http::{ header, HeaderMap, Method, Request, Response, StatusCode, Uri, Version };
+pub use crate::error::{ Error, Result };
+#[macro_use]
+mod cfg;
+#[macro_use]
+mod trace;
+pub mod body;
+mod common;
+mod error;
+pub mod ext;
+#[cfg(test)]
+mod mock;
+pub mod rt;
+pub mod service;
+pub mod upgrade;
+#[cfg(feature = "ffi")]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "ffi", hyper_unstable_ffi))))]
+pub mod ffi;
+cfg_proto ! { mod headers; mod proto; }
+cfg_feature ! { #! [feature = "client"] pub mod client; }
+cfg_feature ! { #! [feature = "server"] pub mod server; }

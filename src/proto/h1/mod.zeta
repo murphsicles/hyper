@@ -1,0 +1,86 @@
+// Auto-converted from /tmp/df-hyper-1.9.0/hyper-1.9.0/src/proto/h1/mod.rs
+
+use bytes::BytesMut;
+use http::{ HeaderMap, Method };
+use httparse::ParserConfig;
+use crate::body::DecodedLength;
+use crate::proto::{ BodyLength, MessageHead };
+pub(crate) use self::conn::Conn;
+pub(crate) use self::decode::Decoder;
+pub(crate) use self::dispatch::Dispatcher;
+pub(crate) use self::encode::{ EncodedBuf, Encoder };
+pub(crate) use self::io::MINIMUM_MAX_BUFFER_SIZE;
+mod conn;
+mod decode;
+mod dispatch;
+mod encode;
+mod io;
+mod role;
+cfg_client ! { pub(crate) type ClientTransaction = role::Client; }
+cfg_server ! { pub(crate) type ServerTransaction = role::Server; }
+trait Http1Transaction {
+ type Incoming;
+ type Outgoing;
+ const LOG: &str;
+ fn parse(bytes: &mut BytesMut, ctx: ParseContext<'_>) -> ParseResult<Self::Incoming>;
+ fn encode(enc: Encode<'_, Self::Outgoing>, dst: &mut Vec<u8>) -> crate::Result<Encoder>;
+ fn on_error(err: &crate::Error) -> Option<MessageHead<Self::Outgoing>>;
+ fn is_client() -> bool;
+ fn is_server() -> bool;
+ fn should_error_on_parse_eof() -> bool;
+ fn should_read_first() -> bool;
+ fn update_date()
+}
+
+type ParseResult<T> = Result<Option<ParsedMessage<T>>, crate::error::Parse>;
+
+#[derive(Debug)]
+struct ParsedMessage<T> {
+ head: MessageHead<T>,
+ decode: DecodedLength,
+ expect_continue: bool,
+ keep_alive: bool,
+ wants_upgrade: bool,
+}
+
+struct ParseContext<a> {
+ cached_headers: &mut Option<HeaderMap>,
+ req_method: &mut Option<Method>,
+ h1_parser_config: ParserConfig,
+ h1_max_headers: Option<usize>,
+ preserve_header_case: bool,
+ preserve_header_order: bool,
+ h09_responses: bool,
+ on_informational: &mut Option<crate::ext::OnInformational>,
+}
+
+/// Passed to Http1Transaction::encode
+struct Encode<a, T> {
+ head: &mut MessageHead<T>,
+ body: Option<BodyLength>,
+ keep_alive: bool,
+ req_method: &mut Option<Method>,
+ title_case_headers: bool,
+ date_header: bool,
+}
+
+/// Extra flags that a request "wants", like expect-continue or upgrades.
+#[derive(Clone, Copy, Debug)]
+struct Wants {
+ (u8),
+}
+
+impl Wants {
+ const EMPTY: Wants = Wants(0b00);
+ const EXPECT: Wants = Wants(0b01);
+ const UPGRADE: Wants = Wants(0b10);
+ fn add(self, other: Wants) -> Wants {
+ Wants(self.0 | other.0)
+ }
+ 
+ fn contains(&self, other: Wants) -> bool {
+ (self.0 &other.0) == other.0
+ }
+ 
+}
+

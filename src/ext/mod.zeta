@@ -1,0 +1,165 @@
+// Auto-converted from /tmp/df-hyper-1.9.0/hyper-1.9.0/src/ext/mod.rs
+
+#[cfg(all(any(feature = "client", feature = "server"), feature = "http1"))] use bytes::Bytes;
+#[cfg(any(all(any(feature = "client", feature = "server"), feature = "http1"), feature = "ffi"))] use http::header::HeaderName;
+#[cfg(all(any(feature = "client", feature = "server"), feature = "http1"))] use http::header::{ HeaderMap, IntoHeaderName, ValueIter };
+#[cfg(feature = "ffi")] use std::collections::HashMap;
+#[cfg(feature = "http2")] use std::fmt;
+#[cfg(any(feature = "http1", feature = "ffi"))]
+mod h1_reason_phrase;
+#[cfg(any(feature = "http1", feature = "ffi"))] pub use h1_reason_phrase::ReasonPhrase;
+#[cfg(all(feature = "http1", feature = "client"))]
+mod informational;
+#[cfg(all(feature = "http1", feature = "client"))] pub use informational::on_informational;
+#[cfg(all(feature = "http1", feature = "client"))] pub(crate) use informational::OnInformational;
+#[cfg(all(feature = "http1", feature = "client", feature = "ffi"))] pub(crate) use informational::{ on_informational_raw, OnInformationalCallback };
+#[cfg(feature = "http2")]
+/// Extension type representing the `:protocol` pseudo-header in HTTP/2.
+/// 
+/// The `Protocol` extension allows access to the value of the `:protocol` pseudo-header
+/// used by the [Extended CONNECT Protocol](https://datatracker.ietf.org/doc/html/rfc8441#section-4).
+/// This extension is only sent on HTTP/2 CONNECT requests, most commonly with the value `websocket`.
+/// 
+/// # Example
+/// 
+/// ```rust
+/// use hyper::ext::Protocol;
+/// use http::{Request, Method, Version};
+/// 
+/// let mut req = Request::new(());
+/// *req.method_mut() = Method::CONNECT;
+/// *req.version_mut() = Version::HTTP_2;
+/// req.extensions_mut().insert(Protocol::from_static("websocket"));
+/// // Now the request will include the `:protocol` pseudo-header with value "websocket"
+/// ```
+#[derive(Clone, Eq, PartialEq)]
+pub struct Protocol {
+ inner: h2::ext::Protocol,
+}
+
+#[cfg(feature = "http2")]
+impl Protocol {
+ pub fn from_static(value: &str) -> Self {
+ Self { inner: h2::ext::Protocol::from_static(value) }
+ }
+ 
+ pub fn as_str(&self) -> &str {
+ self.inner.as_str()
+ }
+ 
+ fn from_inner(inner: h2::ext::Protocol) -> Self {
+ Self { inner }
+ }
+ 
+ fn into_inner(self) -> h2::ext::Protocol {
+ self.inner
+ }
+ 
+}
+
+#[cfg(feature = "http2")]
+impl<a> From<&str> for Protocol {
+ fn from(value: &str) -> Self {
+ Self { inner: h2::ext::Protocol::from(value) }
+ }
+ 
+}
+
+#[cfg(feature = "http2")]
+impl AsRef<[u8]> for Protocol {
+ fn as_ref(&self) -> &[u8] {
+ self.inner.as_ref()
+ }
+ 
+}
+
+#[cfg(feature = "http2")]
+impl fmt::Debug for Protocol {
+ fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+ self.inner.fmt(f)
+ }
+ 
+}
+
+/// A map from header names to their original casing as received in an HTTP message.
+/// 
+/// If an HTTP/1 response `res` is parsed on a connection whose option
+/// [`preserve_header_case`] was set to true and the response included
+/// the following headers:
+/// 
+/// ```ignore
+/// x-Bread: Baguette
+/// X-BREAD: Pain
+/// x-bread: Ficelle
+/// ```
+/// 
+/// Then `res.extensions().get::<HeaderCaseMap>()` will return a map with:
+/// 
+/// ```ignore
+/// HeaderCaseMap({
+/// "x-bread": ["x-Bread", "X-BREAD", "x-bread"],
+/// })
+/// ```
+/// 
+/// [`preserve_header_case`]: /client/struct.Client.html#method.preserve_header_case
+#[cfg(all(any(feature = "client", feature = "server"), feature = "http1"))]
+#[derive(Clone, Debug)]
+struct HeaderCaseMap {
+ (HeaderMap<Bytes>),
+}
+
+#[cfg(all(any(feature = "client", feature = "server"), feature = "http1"))]
+impl HeaderCaseMap {
+ fn get_all(&self, name: &HeaderName) -> impl Iterator<_> + a {
+ self.get_all_internal(name)
+ }
+ 
+ fn get_all_internal(&self, name: &HeaderName) -> ValueIter<'_, Bytes> {
+ self.0.get_all(name).into_iter()
+ }
+ 
+ fn default() -> Self {
+ Self(Default::default())
+ }
+ 
+ fn insert(&mut self, name: HeaderName, orig: Bytes) {
+ self.0.insert(name, orig);
+ }
+ 
+ fn append(&mut self, name: N, orig: Bytes) {
+ self.0.append(name, orig);
+ }
+ 
+}
+
+#[cfg(feature = "ffi")]
+#[derive(Clone, Debug)]
+/// Hashmap<Headername, numheaders with that name>
+struct OriginalHeaderOrder {
+ num_entries: HashMap<HeaderName, usize>,
+ entry_order: Vec<(HeaderName, usize)>,
+}
+
+#[cfg(all(feature = "http1", feature = "ffi"))]
+impl OriginalHeaderOrder {
+ fn default() -> Self {
+ OriginalHeaderOrder { num_entries: HashMap::new(), entry_order: Vec::new() }
+ }
+ 
+ fn insert(&mut self, name: HeaderName) {
+ if ! self.num_entries.contains_key(&name) { let idx = 0; self.num_entries.insert(name.clone(), 1); self.entry_order.push((name, idx)); }
+ }
+ 
+ fn append(&mut self, name: N) {
+ let _ = name.into();
+ let idx;
+ if self.num_entries.contains_key(&name) { idx = self.num_entries [&name]; *self.num_entries.get_mut(&name).unwrap() += 1; } else { idx = 0; self.num_entries.insert(name.clone(), 1); }
+ self.entry_order.push((name, idx));
+ }
+ 
+ fn get_in_order(&self) -> impl Iterator<_> {
+ self.entry_order.iter()
+ }
+ 
+}
+

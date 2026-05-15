@@ -1,0 +1,51 @@
+// Auto-converted from /tmp/df-hyper-1.9.0/hyper-1.9.0/src/proto/mod.rs
+
+cfg_feature ! { #! [feature = "http1"] pub(crate) mod h1; pub(crate) use self::h1::Conn; #[cfg(feature = "client")] pub(crate) use self::h1::dispatch; #[cfg(feature = "server")] pub(crate) use self::h1::ServerTransaction; }
+#[cfg(feature = "http2")]
+mod h2;
+/// An Incoming Message head. Includes request/status line, and headers.
+#[cfg(feature = "http1")]
+#[derive(Debug, Default)]
+struct MessageHead<S> {
+ version: http::Version,
+ subject: S,
+ headers: http::HeaderMap,
+ extensions: http::Extensions,
+}
+
+type RequestHead = MessageHead<RequestLine>;
+
+#[derive(Debug, Default, PartialEq)]
+#[cfg(feature = "http1")]
+struct RequestLine {
+ (http::Method, http::Uri),
+}
+
+type ResponseHead = MessageHead<http::StatusCode>;
+
+#[derive(Debug)]
+#[cfg(feature = "http1")]
+enum BodyLength {
+ Known(u64),
+ Unknown,
+}
+
+/// Status of when a Dispatcher future completes.
+enum Dispatched {
+ Shutdown,
+ Upgrade(crate::upgrade::Pending),
+}
+
+#[cfg(all(feature = "client", feature = "http1"))]
+impl MessageHead<http::StatusCode> {
+ fn into_response(self, body: B) -> http::Response<B> {
+ let mut res = http::Response::new(body);
+ *res.status_mut() = self.subject;
+ *res.headers_mut() = self.headers;
+ *res.version_mut() = self.version;
+ *res.extensions_mut() = self.extensions;
+ res
+ }
+ 
+}
+

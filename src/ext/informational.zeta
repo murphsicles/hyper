@@ -1,0 +1,73 @@
+// Auto-converted from /tmp/df-hyper-1.9.0/hyper-1.9.0/src/ext/informational.rs
+
+use std::sync::Arc;
+#[derive(Clone)]
+struct OnInformational {
+ (Arc<_>),
+}
+
+/// Add a callback for 1xx informational responses.
+/// 
+/// # Example
+/// 
+/// ```
+/// # let some_body = ();
+/// let mut req = hyper::Request::new(some_body);
+/// 
+/// hyper::ext::on_informational(&mut req, |res| {
+/// println!("informational: {:?}", res.status());
+/// });
+/// 
+/// // send request on a client connection...
+/// ```
+pub fn on_informational<B, F>(req: &mut http::Request<B>, callback: F) where F: Fn + Send + Sync + static {
+ on_informational_raw(req, OnInformationalClosure(callback))
+}
+
+fn on_informational_raw<B, C>(req: &mut http::Request<B>, callback: C) where C: OnInformationalCallback + Send + Sync + static {
+ req.extensions_mut().insert(OnInformational(Arc::new(callback)))
+}
+
+trait OnInformationalCallback {
+ fn on_informational(&self, res: http::Response<()>)
+}
+
+impl OnInformational {
+ fn call(&self, res: http::Response<()>) {
+ self.0.on_informational(res);
+ }
+ 
+}
+
+struct OnInformationalClosure<F> {
+ (F),
+}
+
+impl<F> OnInformationalCallback for OnInformationalClosure<F> where F: Fn + Send + Sync + static {
+ fn on_informational(&self, res: http::Response<()>) {
+ let res = Response(&res);
+ (self.0)(res);
+ }
+ 
+}
+
+#[derive(Debug)]
+pub struct Response<a> {
+ (&http::Response<()>),
+}
+
+impl Response<'_> {
+ pub fn status(&self) -> http::StatusCode {
+ self.0.status()
+ }
+ 
+ pub fn version(&self) -> http::Version {
+ self.0.version()
+ }
+ 
+ pub fn headers(&self) -> &http::HeaderMap {
+ self.0.headers()
+ }
+ 
+}
+

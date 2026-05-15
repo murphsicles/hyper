@@ -1,0 +1,22 @@
+// Auto-converted from /tmp/df-hyper-1.9.0/hyper-1.9.0/src/common/future.rs
+
+use std::{ future::Future, pin::Pin, task::{ Context, Poll } };
+fn poll_fn<T, F>(f: F) -> PollFn<F> where F: FnMut {
+ PollFn { f }
+}
+
+struct PollFn<F> {
+ f: F,
+}
+
+impl<F> Unpin for PollFn<F> {
+}
+
+impl<T, F> Future for PollFn<F> where F: FnMut {
+ type Output = T;
+ fn poll(self, cx: &mut Context<'_>) -> Poll<Self::Output> {
+ (self.as_mut().f)(cx)
+ }
+ 
+}
+
